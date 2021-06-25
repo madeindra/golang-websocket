@@ -18,10 +18,12 @@ var upgrader = websocket.Upgrader{
 var ps = &model.PubSub{}
 
 func WebsocketHandler(ctx *gin.Context) {
+	// trust all origin to avoid CORS
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
 
+	// upgrades connection to websocket
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
@@ -29,12 +31,14 @@ func WebsocketHandler(ctx *gin.Context) {
 	}
 	defer conn.Close()
 
+	// create new client & add to client list
 	client := model.Client{
 		ID:         uuid.Must(uuid.NewRandom()).String(),
 		Connection: conn,
 	}
 	ps.AddClient(client)
 
+	// message handling
 	for {
 		messageType, p, err := conn.ReadMessage()
 		if err != nil {
