@@ -18,12 +18,12 @@ go run main.go
 ## Using this server with client
 1. After running the server, open your Websocket client. If you don't have any, try `Websocket King` extension for chrome.
 
-2. Connect to `ws://localhost:8080/socket`, you will get an be greeted by the server and.
+2. Connect to `ws://localhost:8080/socket`, you will be greeted by the server.
 ```
 Server: Welcome! Your ID is f0ab664a-5af3-4f8d-8afe-eb93085267e4
 ```
 
-3. To subscribe to a topic, send this payload (topic can be anything)
+3. To subscribe to a topic, send this payload (*topic can be anything*)
 ```
 {
   "action": "subscribe",
@@ -31,7 +31,7 @@ Server: Welcome! Your ID is f0ab664a-5af3-4f8d-8afe-eb93085267e4
 }
 ```
 
-4. To send a message to a specific topic, send payload in this format
+4. To send a message to the topic's subscribers, send payload in this format
 ```
 {
   "action": "publish",
@@ -40,13 +40,40 @@ Server: Welcome! Your ID is f0ab664a-5af3-4f8d-8afe-eb93085267e4
 }
 ```
 
-5. To step receiving message, send this payload (topic can be anything)
+5. To unsubscribe from the topic, send this payload (*topic can be anything*)
 ```
 {
   "action": "unsubscribe",
   "topic": "world"
 }
 ```
+
+## HTTP vs WebSocket
+
+You might be asking "why should I use Websocket instead of REST API"?
+
+REST API uses HTTP which can only send response once per request. 
+
+Meanwhile, WebSocket can be used for persistent bidirectional communication without the need of reestablishing connection everytime. 
+
+This can be useful in some scenario like chatting or pub-sub.
+
+Here is the diagram to visualize the difference between HTTP and WebSocket.
+
+![HTTP-vs-WebSocket](./diagram/http-vs-ws.png)
+
+## Flowchart
+//TODO
+
+## Further Work
+
+This repository is far from ideal. It's just a proof-of-concept.
+
+While this repository is close to a pub-sub, it can still be used for a chat server. 
+
+For example, we can add a function on socket connected so that client will be automatically subscribes to their own ID as a topic. Other clients then will use those user's ID as a topic to publish a message.
+
+I have tried building such solution combined with Authorization to prevent other user from subscribing to other's ID and it does work.
 
 ## Credit
 This repository is a modified version of [Golang-PubSub by @tabvn](https://github.com/tabvn/golang-pubsub-youtube)
