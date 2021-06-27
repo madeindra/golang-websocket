@@ -15,7 +15,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var ps = &model.PubSub{}
+var server = &model.Server{}
 
 func WebsocketHandler(ctx *gin.Context) {
 	// trust all origin to avoid CORS
@@ -36,18 +36,17 @@ func WebsocketHandler(ctx *gin.Context) {
 		ID:         uuid.Must(uuid.NewRandom()).String(),
 		Connection: conn,
 	}
-	ps.AddClient(client)
 
 	// greet the new client
-	ps.BounceBack(&client, "Server: Welcome! Your ID is "+client.ID)
+	server.Send(&client, "Server: Welcome! Your ID is "+client.ID)
 
 	// message handling
 	for {
 		messageType, p, err := conn.ReadMessage()
 		if err != nil {
-			ps.RemoveClient(client)
+			server.RemoveClient(client)
 			return
 		}
-		ps.ProcessMessage(client, messageType, p)
+		server.ProcessMessage(client, messageType, p)
 	}
 }

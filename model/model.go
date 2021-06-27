@@ -6,29 +6,28 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// contant for 3 type event
+// contant for 3 type actions
 const (
 	publish     = "publish"
 	subscribe   = "subscribe"
 	unsubscribe = "unsubscribe"
 )
 
-// all clients & subscriptions are stored in a variable of this type
-type PubSub struct {
-	Clients       []Client
-	Subscriptions []subscription
+// a server type to store all subscriptions
+type Server struct {
+	Subscriptions []Subscription
+}
+
+// each subscription consists of topic-name & client
+type Subscription struct {
+	Topic   string
+	Clients *[]Client
 }
 
 // each client consists of auto-generated ID & connection
 type Client struct {
 	ID         string
 	Connection *websocket.Conn
-}
-
-// each subscription consists of topic-name & client
-type subscription struct {
-	Topic  string
-	client *Client
 }
 
 // type for a valid message.
@@ -38,149 +37,116 @@ type Message struct {
 	Message string `json:"message"`
 }
 
-// called when a new client connected to the socket
-func (ps *PubSub) AddClient(client Client) *PubSub {
-	ps.Clients = append(ps.Clients, client)
-	return ps
+func (s *Server) Send(client *Client, message string) {
+	client.Connection.WriteMessage(1, []byte(message))
 }
 
-// called when a client disconnected from the socket
-func (ps *PubSub) RemoveClient(client Client) *PubSub {
-	// remove all subscriptions by this client
-	for i := 0; i < len(ps.Subscriptions); i++ {
-		sub := ps.Subscriptions[i]
-		if client.ID == sub.client.ID {
-			if i == len(ps.Subscriptions)-1 {
-				// if it's stored as the last element, crop the array length
-				ps.Subscriptions = ps.Subscriptions[:len(ps.Subscriptions)-1]
-			} else {
-				// if it's stored in between elements, overwrite the element and reduce iterator to prevent out-of-bound
-				ps.Subscriptions = append(ps.Subscriptions[:i], ps.Subscriptions[i+1:]...)
-				i--
+func (s *Server) RemoveClient(client Client) {
+	// Read all subs
+	for _, sub := range s.Subscriptions {
+		// Read all client
+		for i := 0; i < len(*sub.Clients); i++ {
+			if client.ID == (*sub.Clients)[i].ID {
+				// If found, remove client
+				if i == len(*sub.Clients)-1 {
+					// if it's stored as the last element, crop the array length
+					*sub.Clients = (*sub.Clients)[:len(*sub.Clients)-1]
+				} else {
+					// if it's stored in between elements, overwrite the element and reduce iterator to prevent out-of-bound
+					*sub.Clients = append((*sub.Clients)[:i], (*sub.Clients)[i+1:]...)
+					i--
+				}
 			}
 		}
 	}
-
-	// remove this client from the clients list
-	for i := 0; i < len(ps.Clients); i++ {
-		c := ps.Clients[i]
-		if c.ID == client.ID {
-			if i == len(ps.Clients)-1 {
-				// if it's stored as the last element, crop the array length by 1
-				ps.Clients = ps.Clients[:len(ps.Clients)-1]
-			} else {
-				// if it's stored in between elements, overwrite it by the next element and reduce iterator to prevent out-of-bound
-				ps.Clients = append(ps.Clients[:i], ps.Clients[i+1:]...)
-				i--
-			}
-		}
-	}
-
-	return ps
 }
 
-// called when 'publish' action is called, sends a message to all topic subscriber
-func (ps *PubSub) Publish(topic string, message []byte) {
-	subscriptions := ps.GetSubscriptions(topic, nil)
-
-	for _, sub := range subscriptions {
-		sub.client.Send(message)
-	}
-}
-
-// called when needed e.g. wrong action is called, sends a message back to the action caller
-func (ps *PubSub) BounceBack(client *Client, message string) {
-	client.Send([]byte(message))
-}
-
-// called when 'subscribe' action is called, adds a new topic subscription
-func (ps *PubSub) Subscribe(client *Client, topic string) *PubSub {
-	clientSubs := ps.GetSubscriptions(topic, client)
-
-	if len(clientSubs) > 0 {
-		// client has subscribed this topic before
-		return ps
-	}
-
-	newSubscription := subscription{
-		Topic:  topic,
-		client: client,
-	}
-
-	ps.Subscriptions = append(ps.Subscriptions, newSubscription)
-
-	return ps
-}
-
-// called when 'unsubscribe' action is called, remove a topic subscription
-func (ps *PubSub) Unsubscribe(client *Client, topic string) *PubSub {
-	// checks if client subscribed to the topic
-	for i := 0; i < len(ps.Subscriptions); i++ {
-		sub := ps.Subscriptions[i]
-		if sub.client.ID == client.ID && sub.Topic == topic {
-			// found this subscription from client, we need remove it
-			if i == len(ps.Subscriptions)-1 {
-				ps.Subscriptions = ps.Subscriptions[:len(ps.Subscriptions)-1]
-			} else {
-				ps.Subscriptions = append(ps.Subscriptions[:i], ps.Subscriptions[i+1:]...)
-				i--
-			}
-		}
-	}
-
-	return ps
-}
-
-// used by publish & bounceback, this is a basic websocket message sending function
-func (client *Client) Send(message []byte) error {
-	return client.Connection.WriteMessage(1, message)
-}
-
-// used by publish & subscribe, this either add a new topic or get a list of subscription
-func (ps *PubSub) GetSubscriptions(topic string, client *Client) []subscription {
-	var subscriptionList []subscription
-
-	for _, subscription := range ps.Subscriptions {
-		if client != nil {
-			// if no client is provided, then give all subscription
-			if subscription.client.ID == client.ID && subscription.Topic == topic {
-				subscriptionList = append(subscriptionList, subscription)
-			}
-		} else {
-			// else, then give client's subscription
-			if subscription.Topic == topic {
-				subscriptionList = append(subscriptionList, subscription)
-			}
-		}
-	}
-
-	return subscriptionList
-}
-
-// used for message handling, runs function(s) according to actions sent
-func (ps *PubSub) ProcessMessage(client Client, messageType int, payload []byte) *PubSub {
+func (s *Server) ProcessMessage(client Client, messageType int, payload []byte) *Server {
 	m := Message{}
 	if err := json.Unmarshal(payload, &m); err != nil {
-		ps.BounceBack(&client, "Server: Invalid payload")
+		s.Send(&client, "Server: Invalid payload")
 	}
 
 	switch m.Action {
 	case publish:
-		ps.Publish(m.Topic, []byte(m.Message))
+		s.Publish(m.Topic, []byte(m.Message))
 		break
 
 	case subscribe:
-		ps.Subscribe(&client, m.Topic)
+		s.Subscribe(&client, m.Topic)
 		break
 
 	case unsubscribe:
-		ps.Unsubscribe(&client, m.Topic)
+		s.Unsubscribe(&client, m.Topic)
 		break
 
 	default:
-		ps.BounceBack(&client, "Server: Action unrecognized")
+		s.Send(&client, "Server: Action unrecognized")
 		break
 	}
 
-	return ps
+	return s
+}
+
+func (s *Server) Publish(topic string, message []byte) {
+	var clients []Client
+
+	// get list of clients subscribed to topic
+	for _, sub := range s.Subscriptions {
+		if sub.Topic == topic {
+			clients = append(clients, *sub.Clients...)
+		}
+	}
+
+	// send to clients
+	for _, client := range clients {
+		s.Send(&client, string(message))
+	}
+}
+
+func (s *Server) Subscribe(client *Client, topic string) {
+	exist := false
+
+	// find existing topics
+	for _, sub := range s.Subscriptions {
+		// if found, add client
+		if sub.Topic == topic {
+			exist = true
+			*sub.Clients = append(*sub.Clients, *client)
+		}
+	}
+
+	// else, add new topic & add client to that topic
+	if !exist {
+		newClient := &[]Client{*client}
+
+		newTopic := &Subscription{
+			Topic:   topic,
+			Clients: newClient,
+		}
+
+		s.Subscriptions = append(s.Subscriptions, *newTopic)
+	}
+}
+
+func (s *Server) Unsubscribe(client *Client, topic string) {
+	// Read all topics
+	for _, sub := range s.Subscriptions {
+		if sub.Topic == topic {
+			// Read all topics' client
+			for i := 0; i < len(*sub.Clients); i++ {
+				if client.ID == (*sub.Clients)[i].ID {
+					// If found, remove client
+					if i == len(*sub.Clients)-1 {
+						// if it's stored as the last element, crop the array length
+						*sub.Clients = (*sub.Clients)[:len(*sub.Clients)-1]
+					} else {
+						// if it's stored in between elements, overwrite the element and reduce iterator to prevent out-of-bound
+						*sub.Clients = append((*sub.Clients)[:i], (*sub.Clients)[i+1:]...)
+						i--
+					}
+				}
+			}
+		}
+	}
 }
