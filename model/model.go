@@ -31,16 +31,11 @@ type subscription struct {
 	client *Client
 }
 
-// type for a valid action message. Data object will be in Chats type.
+// type for a valid message.
 type Message struct {
-	Action string          `json:"action"`
-	Data   json.RawMessage `json:"data"`
-}
-
-// type for a valid Chats data
-type Chats struct {
-	TargetID string `json:"targetId"`
-	Message  string `json:"message"`
+	Action  string `json:"action"`
+	Topic   string `json:"topic"`
+	Message string `json:"message"`
 }
 
 // called when a new client connected to the socket
@@ -166,27 +161,20 @@ func (ps *PubSub) GetSubscriptions(topic string, client *Client) []subscription 
 func (ps *PubSub) ProcessMessage(client Client, messageType int, payload []byte) *PubSub {
 	m := Message{}
 	if err := json.Unmarshal(payload, &m); err != nil {
-		ps.BounceBack(&client, "Server: Failed binding action")
+		ps.BounceBack(&client, "Server: Invalid payload")
 	}
 
 	switch m.Action {
 	case publish:
-		ch := Chats{}
-		if err := json.Unmarshal(m.Data, &ch); err != nil {
-			ps.BounceBack(&client, "Server: Failed binding data")
-			break
-		}
-
-		ps.Publish(ch.TargetID, []byte(ch.Message))
+		ps.Publish(m.Topic, []byte(m.Message))
 		break
 
 	case subscribe:
-		ps.BounceBack(&client, "Server: Welcome! Your ID is "+client.ID)
-		ps.Subscribe(&client, client.ID)
+		ps.Subscribe(&client, m.Topic)
 		break
 
 	case unsubscribe:
-		ps.Unsubscribe(&client, client.ID)
+		ps.Unsubscribe(&client, m.Topic)
 		break
 
 	default:

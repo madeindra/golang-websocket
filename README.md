@@ -18,35 +18,33 @@ go run main.go
 ## Using this server with client
 1. After running the server, open your Websocket client. If you don't have any, try `Websocket King` extension for chrome.
 
-2. Connect to `ws://localhost:8080/socket`
-
-3. To register to the server, send this payload
-```
-{
-  "action": "subscribe"
-}
-```
-
-4. You will get an ID, this ID is your identifier to receive messages.
+2. Connect to `ws://localhost:8080/socket`, you will get an be greeted by the server and.
 ```
 Server: Welcome! Your ID is f0ab664a-5af3-4f8d-8afe-eb93085267e4
 ```
 
-5. To send a message to a specific ID, send payload in this format
+3. To subscribe to a topic, send this payload (topic can be anything)
 ```
 {
-  "action": "publish",
-  "data": {
-    "targetId": "f0ab664a-5af3-4f8d-8afe-eb93085267e4",
-    "message": "Hello world!"
-  }
+  "action": "subscribe",
+  "topic": "world"
 }
 ```
 
-6. To step receiving message, send this payload
+4. To send a message to a specific topic, send payload in this format
 ```
 {
-  "action": "unsubscribe"
+  "action": "publish",
+  "topic": "world",
+  "message": "Hello world!"
+}
+```
+
+5. To step receiving message, send this payload (topic can be anything)
+```
+{
+  "action": "unsubscribe",
+  "topic": "world"
 }
 ```
 

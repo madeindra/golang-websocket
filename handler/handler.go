@@ -38,6 +38,9 @@ func WebsocketHandler(ctx *gin.Context) {
 	}
 	ps.AddClient(client)
 
+	// greet the new client
+	ps.BounceBack(&client, "Server: Welcome! Your ID is "+client.ID)
+
 	// message handling
 	for {
 		messageType, p, err := conn.ReadMessage()
