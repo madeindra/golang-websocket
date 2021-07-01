@@ -66,6 +66,28 @@ Here is the diagram to visualize the difference between HTTP and WebSocket.
 This flowchart describes how this server works.
 ![Server-Flowchart](./diagram/server-flowchart.png)
 
+## Project Structure
+```
+main.go
+go.mod
+handler
+└── handler.go
+model
+└── model.go
+```
+### Main files
+**main.go**: the main file to be executed.
+
+**go.mod**: go module file.
+
+
+### Handler
+
+**handler.go**: handles open/close connection & pass the message to model.
+
+### Model
+**model.go**: runs specific action according to the client message, also containes functions that needed by the server to work properly as a websocket server.
+
 ## Further Work
 
 This repository is far from ideal. It's just a proof-of-concept.
