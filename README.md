@@ -63,7 +63,8 @@ Here is the diagram to visualize the difference between HTTP and WebSocket.
 ![HTTP-vs-WebSocket](./diagram/http-vs-ws.png)
 
 ## Flowchart
-//TODO
+This flowchart describes how this server works.
+![Server-Flowchart](./diagram/server-flowchart.png)
 
 ## Further Work
 
