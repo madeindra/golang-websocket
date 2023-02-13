@@ -76,19 +76,15 @@ func (s *Server) ProcessMessage(client Client, messageType int, payload []byte) 
 	switch m.Action {
 	case publish:
 		s.Publish(m.Topic, []byte(m.Message))
-		break
 
 	case subscribe:
 		s.Subscribe(&client, m.Topic)
-		break
 
 	case unsubscribe:
 		s.Unsubscribe(&client, m.Topic)
-		break
 
 	default:
 		s.Send(&client, "Server: Action unrecognized")
-		break
 	}
 
 	return s
