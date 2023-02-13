@@ -68,25 +68,23 @@ This flowchart describes how this server works.
 
 ## Project Structure
 ```
-main.go
-go.mod
-handler
-└── handler.go
-model
-└── model.go
+cmd
+└── main
+    └── main.go
+internal
+└── websocket
+    └── handler.go
+    └── server.go
 ```
 ### Main files
 **main.go**: the main file to be executed.
-
-**go.mod**: go module file.
-
 
 ### Handler
 
 **handler.go**: handles open/close connection & pass the message to model.
 
-### Model
-**model.go**: runs specific action according to the client message, also containes functions that needed by the server to work properly as a websocket server.
+### Server
+**server.go**: runs specific action according to the client message, also containes functions that needed by the server to work properly as a websocket server.
 
 ## Further Work
 
