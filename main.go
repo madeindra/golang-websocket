@@ -1,13 +1,18 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/gorilla/mux"
 
 	"github.com/madeindra/golang-websocket/handler"
 )
 
 func main() {
-	router := gin.Default()
-	router.GET("/socket", handler.WebsocketHandler)
-	router.Run(":8080")
+	router := mux.NewRouter()
+	router.HandleFunc("/socket", handler.WebsocketHandler)
+
+	if err := http.ListenAndServe(":8080", router); err != nil {
+		panic(err)
+	}
 }

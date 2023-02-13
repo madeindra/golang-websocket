@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
@@ -17,16 +16,17 @@ var upgrader = websocket.Upgrader{
 
 var server = &model.Server{}
 
-func WebsocketHandler(ctx *gin.Context) {
+func WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	// trust all origin to avoid CORS
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
 
 	// upgrades connection to websocket
-	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("failed upgrading connection"))
 		return
 	}
 	defer conn.Close()
