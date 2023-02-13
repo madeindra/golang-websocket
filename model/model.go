@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -39,6 +40,11 @@ type Message struct {
 
 func (s *Server) Send(client *Client, message string) {
 	client.Connection.WriteMessage(1, []byte(message))
+}
+
+func (s *Server) SendWithWait(client *Client, message string, wg *sync.WaitGroup) {
+	client.Connection.WriteMessage(1, []byte(message))
+	wg.Done()
 }
 
 func (s *Server) RemoveClient(client Client) {
@@ -99,9 +105,13 @@ func (s *Server) Publish(topic string, message []byte) {
 	}
 
 	// send to clients
+	var wg sync.WaitGroup
 	for _, client := range clients {
-		s.Send(&client, string(message))
+		wg.Add(1)
+		s.SendWithWait(&client, string(message), &wg)
 	}
+
+	wg.Wait()
 }
 
 func (s *Server) Subscribe(client *Client, topic string) {
