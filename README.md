@@ -60,11 +60,11 @@ This can be useful in some scenario like chatting or pub-sub.
 
 Here is the diagram to visualize the difference between HTTP and WebSocket.
 
-![HTTP-vs-WebSocket](./diagram/http-vs-ws.png)
+![HTTP-vs-WebSocket](./docs/http-vs-ws.png)
 
 ## Flowchart
 This flowchart describes how this server works.
-![Server-Flowchart](./diagram/server-flowchart.png)
+![Server-Flowchart](./docs/server-flowchart.png)
 
 ## Project Structure
 ```
