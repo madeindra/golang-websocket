@@ -74,6 +74,7 @@ cmd
 internal
 └── websocket
     └── handler.go
+    └── model.go
     └── server.go
 ```
 ### Main files
@@ -81,7 +82,11 @@ internal
 
 ### Handler
 
-**handler.go**: handles open/close connection & pass the message to model.
+**handler.go**: handles open/close connection & pass the message to the server.
+
+### Model
+
+**model.go**: stores the models used by the server.
 
 ### Server
 **server.go**: runs specific action according to the client message, also containes functions that needed by the server to work properly as a websocket server.

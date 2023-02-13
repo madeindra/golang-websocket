@@ -3,39 +3,18 @@ package websocket
 import (
 	"encoding/json"
 	"sync"
-
-	"github.com/gorilla/websocket"
 )
 
-// contant for 3 type actions
+// constantst for action type
 const (
 	publish     = "publish"
 	subscribe   = "subscribe"
 	unsubscribe = "unsubscribe"
 )
 
-// a server type to store all subscriptions
+// Server is the struct to handle the Server functions & manage the Subscriptions
 type Server struct {
 	Subscriptions []Subscription
-}
-
-// each subscription consists of topic-name & client
-type Subscription struct {
-	Topic   string
-	Clients *[]Client
-}
-
-// each client consists of auto-generated ID & connection
-type Client struct {
-	ID         string
-	Connection *websocket.Conn
-}
-
-// type for a valid message.
-type Message struct {
-	Action  string `json:"action"`
-	Topic   string `json:"topic"`
-	Message string `json:"message"`
 }
 
 func (s *Server) Send(client *Client, message string) {
