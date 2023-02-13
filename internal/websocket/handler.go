@@ -1,12 +1,10 @@
-package handler
+package websocket
 
 import (
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-
-	"github.com/madeindra/golang-websocket/model"
 )
 
 var upgrader = websocket.Upgrader{
@@ -14,9 +12,9 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var server = &model.Server{}
+var server = &Server{}
 
-func WebsocketHandler(w http.ResponseWriter, r *http.Request) {
+func HandleWS(w http.ResponseWriter, r *http.Request) {
 	// trust all origin to avoid CORS
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
@@ -32,7 +30,7 @@ func WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	// create new client & add to client list
-	client := model.Client{
+	client := Client{
 		ID:         uuid.Must(uuid.NewRandom()).String(),
 		Connection: conn,
 	}
