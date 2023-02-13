@@ -5,12 +5,12 @@
 
 2. Mount the repository & run this command to install dependencies
 ```
-go get
+make setup
 ```
 
 3. Run the websocket server
 ```
-go run main.go
+make run
 ```
 
 4. Websocket server will be running on `localhost:8080`
