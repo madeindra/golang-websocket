@@ -2,136 +2,137 @@ package websocket
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
-// constantst for action type
+// constants for action type
 const (
 	publish     = "publish"
 	subscribe   = "subscribe"
 	unsubscribe = "unsubscribe"
 )
 
+// constants for server message
+const (
+	errInvalidMessage       = "Server: Invalid msg"
+	errActionUnrecognizable = "Server: Action unrecognized"
+)
+
 // Server is the struct to handle the Server functions & manage the Subscriptions
 type Server struct {
-	Subscriptions []Subscription
+	Subscriptions Subscription
 }
 
-func (s *Server) Send(client *Client, message string) {
-	client.Connection.WriteMessage(1, []byte(message))
+// Send simply sends message to the websocket client
+func (s *Server) Send(conn *websocket.Conn, message string) {
+	// send simple message
+	conn.WriteMessage(1, []byte(message))
 }
 
-func (s *Server) SendWithWait(client *Client, message string, wg *sync.WaitGroup) {
-	client.Connection.WriteMessage(1, []byte(message))
+// SendWithWait sends message to the websocket client using wait group, allowing usage with goroutines
+func (s *Server) SendWithWait(conn *websocket.Conn, message string, wg *sync.WaitGroup) {
+	// send simple message
+	conn.WriteMessage(1, []byte(message))
+
+	// set the task as done
 	wg.Done()
 }
 
-func (s *Server) RemoveClient(client Client) {
-	// Read all subs
-	for _, sub := range s.Subscriptions {
-		// Read all client
-		for i := 0; i < len(*sub.Clients); i++ {
-			if client.ID == (*sub.Clients)[i].ID {
-				// If found, remove client
-				if i == len(*sub.Clients)-1 {
-					// if it's stored as the last element, crop the array length
-					*sub.Clients = (*sub.Clients)[:len(*sub.Clients)-1]
-				} else {
-					// if it's stored in between elements, overwrite the element and reduce iterator to prevent out-of-bound
-					*sub.Clients = append((*sub.Clients)[:i], (*sub.Clients)[i+1:]...)
-					i--
-				}
-			}
-		}
+// RemoveClient removes the clients from the server subscription map
+func (s *Server) RemoveClient(clientID string) {
+	// loop all topics
+	for _, client := range s.Subscriptions {
+		// delete the client from all the topic's client map
+		delete(client, clientID)
 	}
 }
 
-func (s *Server) ProcessMessage(client Client, messageType int, payload []byte) *Server {
+// ProcessMessage handle message according to the action type
+func (s *Server) ProcessMessage(conn *websocket.Conn, clientID string, msg []byte) *Server {
+	// parse message
 	m := Message{}
-	if err := json.Unmarshal(payload, &m); err != nil {
-		s.Send(&client, "Server: Invalid payload")
+	if err := json.Unmarshal(msg, &m); err != nil {
+		s.Send(conn, errInvalidMessage)
 	}
 
-	switch m.Action {
+	// convert all action to lowercase and remove whitespace
+	action := strings.TrimSpace(strings.ToLower(m.Action))
+
+	switch action {
 	case publish:
 		s.Publish(m.Topic, []byte(m.Message))
 
 	case subscribe:
-		s.Subscribe(&client, m.Topic)
+		s.Subscribe(conn, clientID, m.Topic)
 
 	case unsubscribe:
-		s.Unsubscribe(&client, m.Topic)
+		s.Unsubscribe(clientID, m.Topic)
 
 	default:
-		s.Send(&client, "Server: Action unrecognized")
+		s.Send(conn, errActionUnrecognizable)
 	}
 
 	return s
 }
 
+// Publish sends a message to all subscribing clients of a topic
 func (s *Server) Publish(topic string, message []byte) {
-	var clients []Client
-
-	// get list of clients subscribed to topic
-	for _, sub := range s.Subscriptions {
-		if sub.Topic == topic {
-			clients = append(clients, *sub.Clients...)
-		}
+	// if topic does not exist, stop the process
+	if _, exist := s.Subscriptions[topic]; !exist {
+		return
 	}
 
-	// send to clients
+	// if topic exist
+	client := s.Subscriptions[topic]
+
+	// send the message to the clients
 	var wg sync.WaitGroup
-	for _, client := range clients {
+	for _, conn := range client {
+		// add 1 job to wait group
 		wg.Add(1)
-		s.SendWithWait(&client, string(message), &wg)
+
+		// send with goroutines
+		go s.SendWithWait(conn, string(message), &wg)
 	}
 
+	// wait until all goroutines jobs done
 	wg.Wait()
 }
 
-func (s *Server) Subscribe(client *Client, topic string) {
-	exist := false
+// Subscribe adds a client to a topic's client map
+func (s *Server) Subscribe(conn *websocket.Conn, clientID string, topic string) {
+	// if topic exist, check the client map
+	if _, exist := s.Subscriptions[topic]; exist {
+		client := s.Subscriptions[topic]
 
-	// find existing topics
-	for _, sub := range s.Subscriptions {
-		// if found, add client
-		if sub.Topic == topic {
-			exist = true
-			*sub.Clients = append(*sub.Clients, *client)
-		}
-	}
-
-	// else, add new topic & add client to that topic
-	if !exist {
-		newClient := &[]Client{*client}
-
-		newTopic := &Subscription{
-			Topic:   topic,
-			Clients: newClient,
+		// if client already subbed, stop the process
+		if _, subbed := client[clientID]; subbed {
+			return
 		}
 
-		s.Subscriptions = append(s.Subscriptions, *newTopic)
+		// if not subbed, add to client map
+		client[clientID] = conn
+		return
 	}
+
+	// if topic does not exist, create a new topic
+	newClient := make(Client)
+	s.Subscriptions[topic] = newClient
+
+	// add the client to the topic
+	s.Subscriptions[topic][clientID] = conn
 }
 
-func (s *Server) Unsubscribe(client *Client, topic string) {
-	// Read all topics
-	for _, sub := range s.Subscriptions {
-		if sub.Topic == topic {
-			// Read all topics' client
-			for i := 0; i < len(*sub.Clients); i++ {
-				if client.ID == (*sub.Clients)[i].ID {
-					// If found, remove client
-					if i == len(*sub.Clients)-1 {
-						// if it's stored as the last element, crop the array length
-						*sub.Clients = (*sub.Clients)[:len(*sub.Clients)-1]
-					} else {
-						// if it's stored in between elements, overwrite the element and reduce iterator to prevent out-of-bound
-						*sub.Clients = append((*sub.Clients)[:i], (*sub.Clients)[i+1:]...)
-						i--
-					}
-				}
-			}
-		}
+// Unsubscribe removes a clients from a topic's client map
+func (s *Server) Unsubscribe(clientID string, topic string) {
+	// if topic exist, check the client map
+	if _, exist := s.Subscriptions[topic]; exist {
+		client := s.Subscriptions[topic]
+
+		// remove the client from the topic's client map
+		delete(client, clientID)
 	}
 }
