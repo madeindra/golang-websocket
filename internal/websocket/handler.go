@@ -31,7 +31,7 @@ func HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	// create new client & add to client list
 	client := Client{
-		ID:         uuid.Must(uuid.NewRandom()).String(),
+		ID:         uuid.New().String(),
 		Connection: conn,
 	}
 
