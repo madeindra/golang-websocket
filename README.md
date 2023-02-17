@@ -102,4 +102,4 @@ For example, we can add a function on socket connected so that client will be au
 I have tried building such solution combined with Authorization to prevent other user from subscribing to other's ID and it does work.
 
 ## Credit
-This repository is a modified version of [Golang-PubSub by @tabvn](https://github.com/tabvn/golang-pubsub-youtube)
+This repository is inspired by [Golang-PubSub by @tabvn](https://github.com/tabvn/golang-pubsub-youtube)

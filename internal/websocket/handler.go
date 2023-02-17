@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -12,7 +13,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var server = &Server{}
+// Initialize server with empty subscription
+var server = &Server{Subscriptions: make(Subscription)}
 
 func HandleWS(w http.ResponseWriter, r *http.Request) {
 	// trust all origin to avoid CORS
@@ -29,22 +31,20 @@ func HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// create new client & add to client list
-	client := Client{
-		ID:         uuid.New().String(),
-		Connection: conn,
-	}
+	// create new client id
+	clientID := uuid.New().String()
 
 	// greet the new client
-	server.Send(&client, "Server: Welcome! Your ID is "+client.ID)
+	server.Send(conn, fmt.Sprintf("Server: Welcome! Your ID is %s", clientID))
 
 	// message handling
 	for {
-		messageType, p, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			server.RemoveClient(client)
+			server.RemoveClient(clientID)
 			return
 		}
-		server.ProcessMessage(client, messageType, p)
+		fmt.Println("message type")
+		server.ProcessMessage(conn, clientID, msg)
 	}
 }
