@@ -29,13 +29,13 @@ type Server struct {
 // Send simply sends message to the websocket client
 func (s *Server) Send(conn *websocket.Conn, message string) {
 	// send simple message
-	conn.WriteMessage(1, []byte(message))
+	conn.WriteMessage(websocket.TextMessage, []byte(message))
 }
 
 // SendWithWait sends message to the websocket client using wait group, allowing usage with goroutines
 func (s *Server) SendWithWait(conn *websocket.Conn, message string, wg *sync.WaitGroup) {
 	// send simple message
-	conn.WriteMessage(1, []byte(message))
+	conn.WriteMessage(websocket.TextMessage, []byte(message))
 
 	// set the task as done
 	wg.Done()
