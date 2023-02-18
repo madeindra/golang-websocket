@@ -44,7 +44,6 @@ func HandleWS(w http.ResponseWriter, r *http.Request) {
 			server.RemoveClient(clientID)
 			return
 		}
-		fmt.Println("message type")
 		server.ProcessMessage(conn, clientID, msg)
 	}
 }
