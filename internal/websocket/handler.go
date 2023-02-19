@@ -16,22 +16,28 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 	// time allowed to write a message to client
 	writeWait = 10 * time.Second
+	// max message size allowed
+	maxMessageSize = 512
+	// I/O read buffer size
+	readBufferSize = 1024
+	// I/O write buffer size
+	writeBufferSize = 1024
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
 
 // Initialize server with empty subscription
 var server = &Server{Subscriptions: make(Subscription)}
 
-func HandleWS(w http.ResponseWriter, r *http.Request) {
-	// trust all origin to avoid CORS
-	upgrader.CheckOrigin = func(r *http.Request) bool {
+// http to websocket upgrader
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  readBufferSize,
+	WriteBufferSize: writeBufferSize,
+	CheckOrigin: func(r *http.Request) bool {
+		// allow all origin
 		return true
-	}
+	},
+}
 
+func HandleWS(w http.ResponseWriter, r *http.Request) {
 	// upgrades connection to websocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -57,7 +63,7 @@ func HandleWS(w http.ResponseWriter, r *http.Request) {
 // readPump process incoming messages and set the settings
 func readPump(conn *websocket.Conn, clientID string, done chan<- struct{}) {
 	// set limit, deadline to read & pong handler
-	conn.SetReadLimit(512)
+	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongWait))
